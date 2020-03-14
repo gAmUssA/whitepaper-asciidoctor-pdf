@@ -1,0 +1,412 @@
+= Confluent Platform Reference Architecture for Kubernetes
+Viktor Gamov, © 2018-2020 Confluent, Inc.
+:linkattrs:
+:ast: &ast;
+:y: &#10003;
+:n: &#10008;
+:y: icon:check-sign[role="green"]
+:n: icon:check-minus[role="red"]
+:c: icon:file-text-alt[role="blue"]
+:icons: font
+:source-highlighter: highlight.js
+:highlightjs-theme: idea
+:toc-placement: macro
+:toc: auto
+
+The reference architecture provides a detailed architecture for deploying the Confluent Platform on Kubernetes with Confluent Operator to illustrate the configuration and deployment practices.
+
+NOTE: The recommendations are valid for Kubernetes (from 1.11 to 1.15) and Confluent Platform 5.4.1.
+
+toc::[]
+
+== Confluent Platform Architecture for Kubernetes
+
+Apache Kafka^®^ is an open source distributed streaming platform designed to provide the essential components necessary for managing streaming data storage (Kafka Core), data integration (Kafka Connect API), and processing (Kafka Streams API).
+Apache Kafka is a proven technology deployed in many production environments to https://kafka.apache.org/powered-by[power some of the world's largest stream processing systems].
+
+Confluent Platform, the enterprise distribution of Apache Kafka, is intended for large-scale production environments.
+It improves Apache Kafka by expanding its integration capabilities, adding tools to optimize and manage Kafka clusters, and ensuring the streams are secure.
+With native support for Kubernetes in Confluent Platform, developers and operators can automate Kafka operations on Kubernetes in production.
+Confluent provides production-ready Confluent Platform Docker images, configuration templates for Kubernetes, a reference architecture with best practices for running Kafka on Kubernetes, as well as Confluent Operator to automate cluster operations.
+
+Confluent Platform complements Apache Kafka with enterprise-grade features that make Confluent Platform a one-stop-shop for setting up a production-ready event streaming platform.
+
+The Confluent Platform package includes the following set of components:
+
+* Clients for C, C++, Python, .NET, and Go programming languages.
+* https://www.confluent.io/hub[Connectors] for JDBC, JMS, Elasticsearch, Amazon S3, and HDFS.
+* Confluent Schema Registry for managing metadata for Kafka topics.
+* ksqlDB for stream processing.
+* Confluent Control Center for end-to-end monitoring of data streams.
+* Confluent Replicator for managing multi-datacenter deployments.
+
+We'll start describing the architecture from the ground up, and for each component, we'll explain when it is needed and the best plan for deploying it.
+For more details, you can refer to the https://docs.confluent.io/current/installation/operator/index.html#[Confluent Operator documentation].
+
+== Prerequisites
+
+This document doesn't provide a comprehensive overview of all Kubernetes features.
+If you're not familiar with Kubernetes, you can start with the https://kubernetes.io/docs/tutorials/kubernetes-basics/[getting started guide] for Kubernetes.
+You can also watch a short video by Viktor Gamov on basics of Kubernetes and how to know to run stateful workloads (like Apache Kafka):
+
+video::JiDiC5MI7hw[youtube]
+
+You should have a good understanding of the following concepts in Kubernetes:
+
+* https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/[Pod]
+* https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/[StatefulSets]
+* https://kubernetes.io/docs/concepts/storage/persistent-volumes/[Persistent Volumes]
+* https://kubernetes.io/docs/concepts/services-networking/service/[Service]
+* https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[Custom Resources]
+* https://kubernetes.io/docs/concepts/extend-kubernetes/operator/[Operator Pattern]
+
+NOTE: In the previous edition of this paper, we discussed Helm Charts for the Confluent Platform.
+In this version, we focus on the Confluent Operator instead of the Helm charts.
+
+.Table Comparison Between Confluent Platform Operator v1.0 and Open Source Helm Charts
+[%header,cols=2*]
+|===
+|Confluent Platform Operator v1.0
+|Open source Helm Charts
+|Confluent Commercially licensed. Developed by Confluent Engineering
+|Apache 2.0 Licensed. DIY and Community-Based Development.
+
+|Fully Supported by Confluent
+|No Confluent Support
+
+|A sophisticated Kubernetes operator that fully maintains the lifecycle management of the entire Confluent Platform cluster, including everything it creates in Kubernetes.
+|A simple installer using Kubernetes `Deployments` and `StatefulSets.` It merely installs Confluent Platform, but does not maintain the Kubernetes components,
+i.e., when `configmaps` and `secrets` objects get deleted, the Helm Charts do not recreate them.
+
+|SASL Plain, mutual TLS authentication configuration automation
+|No security automation
+
+|Easy external access by automatically provisioning `Load Balancers`
+|Manual external access configuration
+|===
+
+== General Architectural Considerations
+
+Before we jump into discussing individual configuration options, let me set the stage and address some common questions.
+
+=== Which version of Kubernetes should I use?
+
+As Gwen Shapira mentioned in her http://cnfl.io/heptio-confluent[presentation], the Kubernetes community is very productive, and development is extremely active.
+We recommend using Kubernetes `1.11.x`–`1.15.x`.
+You can always find the actual list of supported environments in the official https://docs.confluent.io/5.4.1/installation/operator/index.html#supported-environments[Confluent Operator documentation].
+
+Warning: it's indispensable to continually upgrade your clusters to catch up with the fast pace of Kubernetes releases.
+
+=== How would you bring the Confluent Platform to Kubernetes?
+
+Since the Confluent Platform is a complex set of different software components, the deployment tool should provide an easy way to deploy the whole platform as well as individual components.
+Confluent Operator orchestrates Kafka clusters and operationalizes the management best practices acquired by Confluent from years of running Kafka in production.
+
+.How do I use Confluent Operator Helm Charts?
+****
+For the user's convenience, Confluent provides a Helm Chart to instantly deploy the Confluent Operator, Apache Kafka, Apache ZooKeeper™, and the rest of the Confluent Platform components (Connect, ksqlDB, and Control Center).
+The https://docs.confluent.io/current/installation/operator/co-quickstart.html[quick start] helps the user quickly install everything onto a Kubernetes cluster.
+Helm Charts come with sane defaults that you can safely apply to get the best Kafka experience on Kubernetes.
+
+[source,shell]
+.Inside the Confluent Operator package
+----
+.
+├── COPYRIGHT
+├── IMAGES
+├── grafana-dashboard
+│   ├── README.md
+│   └── grafana-dashboard.json
+├── helm
+│   ├── README.rst
+│   ├── confluent-operator  # <1>
+│   │   ├── Chart.yaml
+│   │   ├── LICENSE
+│   │   ├── charts
+│   │   ├── requirements.yaml
+│   │   ├── templates
+│   │   └── values.yaml
+│   ├── providers       # <2>
+│   │   ├── README.rst
+│   │   ├── aws.yaml
+│   │   ├── azure.yaml
+│   │   ├── gcp.yaml
+│   │   └── private.yaml
+│   └── scripts
+│       ├── openshift
+│       └── tiller
+└── scripts
+    ├── operator-util.sh
+    └── upgrade
+        ├── disable_reconcile.sh
+        ├── enable_reconcile.sh
+        ├── files
+        └── pre_upgrade_cp54_zookeeper.sh
+----
+<1> The `confluent-operator` directory is a Helm Chart that simply aggregates many "subcharts." There is a subchart for the Confluent Operator itself, which installs Confluent's `CustomResourceController` responsible for managing `CustomResourceDefinitions` (CRDs). `KafkaCluster` and `ZooKeeperCluster` CRDs manage the lifecycle of Apache Kafka and ZooKeeper, and there is a `PhysicalStatefulCluster` CRD for managing the lifecycle of the rest of the components (Connect, ksqlDB, and Control Center).
+To learn more about Confluent Operator CRDs, watch the presentation by Viktor Gamov and Michael Ng from https://www.confluent.io/kafka-summit-ny19/kafka-on-kubernetes-does-it-really-have-to-be-hard[Kafka Summit NYC 2019].
+<2> A `providers` directory under `helm` directory includes defaults for officially supported cloud providers.
+If you're rolling your Kubernetes cluster, use `private.yaml` as a starting example.
+To customize your deployment, we recommend copying one of the provided files and customizing it based on your deployment requirements.
+You can find an example of such an approach in this https://gist.github.com/confluentgist/92de81ff38c48769e40c118a9de9213c[deployment of `private.yaml` for Pivotal Container Service (PKS) on the Google Kubernetes Engine (GKE)].
+
+In subsequent sections, we will use snippets of configurations for particular CRDs.
+
+****
+
+=== Storage
+
+Apache Kafka is the heart of the Confluent Platform.
+The persistence aspect of the platform is a crucial part.
+Kubernetes provides primitives to manage storage for stateful systems like Apache Kafka.
+Kubernetes uses `PersistentVolumes` and `PersistentVolumeClaims` for https://kubernetes.io/docs/concepts/storage/persistent-volumes/[managing storage].
+
+Based on the target deployment platform (Amazon Web Services, Google Compute Engine, etc.), https://kubernetes.io/docs/concepts/storage/storage-classes[storage classes] should be chosen accordingly.
+
+* A `StorageClass` gce-pd for Google Kubernetes Engine (GKE)
+* A `StorageClass` azure-disk for Azure Kubernetes Service (AKS)
+* A `StorageClass` aws-ebs for Amazon Elastic Kubernetes Service (Amazon EKS)
+
+=== Compute Instances
+
+Apache Kafka is memory (RAM) intensive.
+Thus we recommend the following instance types:
+
+|===
+| Cloud Provider | Instance Types
+
+| GKE
+| `n1-highmem-2` - `n1-highmem-64`
+
+| Microsoft Azure
+| `G-Series.`
+
+| Amazon EKS
+| `r3.large`, `r3.8xlarge`, `x1.32xlarge`
+|===
+
+=== Networking
+
+If you're using managed Kubernetes services (GKE, AKS, or Amazon EKS), you should rely on the recommended networking configuration.
+For example, __enhanced networking__ on AWS is supported on R4 and R3 type instances, and we recommend enabling it.
+
+The Kubernetes open model allows you to use many providers of Container Network Interfaces (CNIs).
+We suggest reading external docs like https://chrislovecnm.com/kubernetes/cni/choosing-a-cni-provider/[Choosing a CNI Network Provider for Kubernetes] to determine what works best for you.
+If you are interested in a performance comparison of different CNI plugins, read this https://itnext.io/benchmark-results-of-kubernetes-network-plugins-cni-over-10gbit-s-network-updated-april-2019-4a9886efe9c4[article].
+
+== Considerations for Confluent Platform Components
+
+=== ZooKeeper Configuration
+
+NOTE: This section explains the requirements and recommendations for ZooKeeper on Kubernetes.
+
+ZooKeeper is a centralized service for managing distributed processes, and it is a _mandatory_ component in every Kafka cluster.
+While the Kafka community has been working to reduce the dependency of Kafka clients on ZooKeeper, Kafka brokers still use ZooKeeper to manage cluster membership and elect a cluster controller.
+Kafka requires an installation of ZooKeeper for broker configuration storage and coordination.
+
+NOTE: It is recommended to deploy a separate, small ZooKeeper ensemble for each Kafka cluster instead of using a large multi-tenant ensemble.
+
+ZooKeeper uses the JVM heap.
+You can start from 512M, and increase up to 4 GB RAM, which is typically sufficient for large production workloads.
+ZooKeeper is not a CPU-intensive application.
+For a production deployment, you should start with 2 CPUs and adjust as necessary.
+For a demo deployment, you can set the CPUs as low as 0.5.
+
+
+[source,yaml]
+.ZookeeperCluster Custom Resource (CR) `configuration.yaml`
+----
+## Zookeeper cluster
+##
+zookeeper:
+  name: zookeeper
+  replicas: 3
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512M 
+----
+
+ZooKeeper Pods should be deployed as `StatefulSet` with a replication factor minimum of three.
+However, in the production configuration, we recommend using a minimum of _five_ ZooKeeper pods.
+This requirement allows you to tolerate failures of two nodes at the same time and still provide leader election services to Kafka.
+Also, this makes the rolling restart more flexible since ZooKeeper currently doesn't support dynamic ensemble reconfiguration.
+
+NOTE: Dynamic ensemble configuration in ZooKeeper can't be dynamically performed in the latest stable version.
+This means that with the current stable version, https://zookeeper.apache.org/doc/r3.5.3-beta/zookeeperReconfig.html#ch_reconfig_dyn[you can't dynamically scale up your ZooKeeper ensemble].
+To handle this particular scenario, we developed a custom resource controller (part of the Confluent Operator).
+To scale the ZooKeeper cluster, you just need to change several replicas in `ZookeeperCluster`, and the Operator handles the configuration change on all the members of the ensemble.
+
+To ensure a minimum number of servers available (the availability of your ZooKeeper service), configure `PodDisruptionBugdet` as well.
+
+[source, yaml]
+.ZooKeeper PDB example
+----
+❯ k get pdb zookeeper -oyaml | c -l yaml
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+...
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      namespace: operator
+      type: zookeeper
+status:
+  currentHealthy: 3
+  desiredHealthy: 2
+  disruptionsAllowed: 1
+  expectedPods: 3
+  observedGeneration: 1
+----
+
+NOTE: For Kubernetes to know if ZooKeeper is up and running, previously, we recommended configuring _liveness_ probes. ZooKeeper provides built-in commands to report the health of ZooKeeper nodes, known as https://zookeeper.apache.org/doc/r3.4.8/zookeeperAdmin.html#sc_zkCommands[four-letter words].
+With Confluent Operator, you don't need to do that because the Operator maintains the health of your ZooKeeper cluster.
+
+=== Kafka Brokers
+
+Kafka brokers are the primary storage and messaging components of Apache Kafka.
+The Kafka cluster maintains streams of messages called _topics_, the topics are sharded into _partitions_ (ordered, immutable logs of messages), and the partitions replicated and distributed for high availability.
+The servers that run the Kafka cluster called brokers.
+
+==== Cluster Size
+
+The size of the Kafka cluster, or the number of brokers, is controlled by the `.spec.replicas` field of the `KafkaCluster` CR.
+You should ensure that the size of the cluster supports your planned throughput and latency requirements for all topics.
+If the size of the cluster gets too large, you should consider segregating it into multiple, smaller clusters.
+
+We recommend having at least three Kafka brokers in a cluster, each running on a separate server.
+This way, you can replicate each Kafka partition at least three times and have a cluster that survives failure of two nodes without data loss.
+
+If anyone of your three Kafka brokers is not available, you won't be able to create new topics with three replicas until all brokers are available again.
+For this reason, if you have use cases that require creating new topics frequently, we recommend running at least four brokers in a cluster.   +
+
+If the Kafka cluster is not going to be highly loaded, it is acceptable to run Kafka brokers on the same servers as the ZooKeeper nodes.
+In this case, it is recommended to allocate separate disks for ZooKeeper (as we'll specify in the hardware recommendations below).
+For high-throughput use cases, we do recommend installing Kafka brokers on separate nodes.
+
+==== CPU
+
+Most of the Confluent Platform components are not mainly CPU bound.
+The few exceptions are:
+
+*Compression:* Kafka producers and consumers will compress and decompress data if you configure them to do so. We recommend using compression when you need to save bandwidth during transport or when storing on a filesystem.
+
+*Encryption:* starting at version 0.9.0, Kafka clients can communicate with brokers using SSL.
+There is a small performance overhead on both the client and the broker when using encryption, and a more substantial overhead when it is the consumer that connects over SSL. Since the broker needs to encrypt messages before sending them to the consumer, it can't use the regular zero-copy optimization and therefore uses significantly more CPU.
+
+*High rate of client requests:* if you have many clients, or if consumers are configured with `max.fetch.wait=0`, they can send very frequent requests and effectively saturate the broker.
+In those cases, configuring clients to batch requests improves performance.
+For a number of clients near 1,000, we recommend tuning brokers to fetch less frequently.
+However, CPU is unlikely to be your bottleneck.
+An 8-CPU deployment should be more than sufficient for excellent performance. You should start by simulating your workload with 2–4 CPUs and titrating up from there.
+
+==== Disk
+
+Disk throughput is the most common bottleneck that users encounter with Kafka.
+Given that network-attached storage backs persistent volumes, the throughput is, in most cases, capped on a per-node basis without respect to the number of persistent volumes that are attached to the node.
+For instance, if you are deploying Kafka onto a GKE- or GCP-based Kubernetes cluster, and if you use the standard PD type, your maximum sustained per-instance throughput is 120 MB/s (write) and 180 MB/s (read).
+If you have multiple applications, each with a persistent volume mounted, these numbers represent the total achievable throughput.   +
+
+You can control the amount of disk allocated by your provisioner using the `.spec.resources.storage.capacity` field.
+
+==== Memory
+
+Kafka heavily utilizes the open source https://en.wikipedia.org/wiki/Page_cache[page cache] to buffer data.  +
+To understand the interaction of Kafka and Linux containers, please read about the https://kafka.apache.org/documentation/#design_filesystem[Kafka filesystem design] in addition to the https://www.kernel.org/doc/Documentation/cgroup-v1/memory.txt[memory cgroups documentation]. +
+Keep in mind that https://stackoverflow.com/questions/47935039/do-docker-containers-on-the-same-host-machine-share-the-same-page-cache[the kernel manages page cache], which all Pods use.
+
+The `KAFKA_HEAP_OPTS` environment variable controls the JVM heap size of the Kafka brokers.
+`-Xms=2G -Xmx=2G` is sufficient for most deployments to begin.
+
+JVM heap settings will be honored https://blogs.oracle.com/java-platform-group/java-se-support-for-docker-cpu-and-memory-limits[inside the container].
+
+==== Readiness and Liveness
+
+Whether or not the JVM process running the broker is still alive determines the liveness of the broker. A readiness check to determine if the application can accept requests ultimately decides readiness. +
+
+[source,yml]
+----
+readinessProbe:
+  exec:
+   command:
+    - sh
+    - -c
+    - "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server=localhost:9093"
+----
+
+NOTE: A simple ping to the listener port may not be enough to ensure the Kafka broker's readiness. Calling the admin API (`BrokerApiVersionCommand`) will make sure that the Kafka broker is up, initialized, and ready to accept requests.
+
+==== Kafka Application Logging
+
+Kafka's application logs written to standard, so they are captured by the default logging infrastructure (according to best practice for containerized applications).
+
+===== Manifests
+
+A Kafka Kubernetes deployment consists of:
+
+* https://github.com/confluentinc/cp-helm-charts/blob/master/charts/cp-kafka/templates/statefulset.yaml[Kafka StatefulSet]
+* https://github.com/confluentinc/cp-helm-charts/blob/master/charts/cp-kafka/templates/service.yaml[Kafka Service]
+* https://github.com/confluentinc/cp-helm-charts/blob/master/charts/cp-kafka/templates/headless-service.yaml[Kafka Headless Service]
+
+=== Kafka Streams API
+
+The Kafka Streams API, a component of open source Apache Kafka, is a powerful, easy-to-use library for building highly scalable, fault-tolerant, stateful distributed stream processing applications on top of Apache Kafka.
+It builds upon http://docs.confluent.io/current/streams/concepts.html#streams-concepts[essential concepts for stream processing], such as accurately distinguishing between event time and processing time, handling of late-arriving data, and efficient management of application state.
+
+Kafka Streams is a library that is embedded in the application code (just like Jetty, for instance), and as such, you don't need to allocate Kafka Streams servers. Still, you do need to allocate servers for the applications that use the Kafka Streams library (or at least resources for their containers).
+Kafka Streams will use parallel-running tasks for the different partitions and processing stages in the application and, as such, will benefit from a higher core count.
+If you deploy multiple instances of the application on multiple servers (recommended), the Kafka Streams library will handle load balancing and failover automatically.
+To maintain its application state, Kafka Streams uses an embedded RocksDB database.
+Persistent SSD disks are well suited for RocksDB storage.
+For example, in managed Kubernetes services like GKE, you can request to provision SSD disks (`pd-ssd`) instead of the standard (`pd-standard`).
+
+[source,yml]
+----
+apiVersion: storage.Kubernetes.io/v1
+kind: StorageClass
+metadata:
+  name: ssd
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-ssd
+----
+
+==== Stateless Pod and Data Safety
+
+You can consider the application as a stateless Pod as far as data safety is a concern. Regardless of what happens to the Pod, Kafka and Kafka Streams guarantee that you will not lose data (even if you have enabled exactly once processing). +
+
+That's because the state changes in your application are always continuously backed up to Kafka (brokers) via https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Streams+Internal+Data+Management#KafkaStreamsInternalDataManagement-InternalTopicsandStateStoreNames[changelog topics] of the respective state stores—unless you explicitly disable changelog functionality (it is enabled by default).
+
+The above is even true when not using Kafka Streams' default storage engine (RocksDB) but the alternative in-memory storage engine.
+Many users don't realize this because they read "in-memory" and (falsely) conclude that data will be lost when a machine crashes, restarts, etc.
+
+==== Stateless Pod and Application Restoration/Recovery Time
+
+The above being said, you should understand how having vs. not having a local state available after Pod restarts will impact the restoration/recovery time of your application (or rather: application instance) until it is fully operational again. +
+For example, one instance of the stateful application runs on a machine.
+It will store its local state under `state.dir,` and it will also continuously back up any changes to its local state to the remote Kafka cluster (brokers).
+
+* If the app instance is being restarted and does not have access to its previous `state.dir` (probably because it is restarted on a different machine)It will fully reconstruct its state by restoring from the associated changelog(s) in Kafka.
+Depending on the size of your state, this may take milliseconds, seconds, minutes, or more.
+Only once its state is fully restored, it will begin processing new data.
+* If the app instance is being restarted and does have access to its previous `state.dir` (probably because it is restarted on the same, original machine)It can recover much more quickly because it can reuse all or most of the existing local state, so only a small delta needs to be restored from the associated changelog(s).
+
+Only once its state is fully restored will it begin to process new data.
+In other words, if your application can reuse the existing local state, this is good because it will minimize application recovery time.
+
+Standby replicas come to the rescue in stateless environments, but even if you're running stateless Pods, there are options to minimize application recovery times by configuring your application to use standby replicas via the `num.standby.replicas` setting:
+
+* Standby replicas are shadow copies of local state stores
+* Kafka Streams attempts to create the specified number of replicas and keep them up to date as long as enough instances are running
+* Standby replicas can be used to minimize the latency of task failover
+
+A task that is previously running on a failed instance prefers to restart on an instance that has standby replicas so that the local state store restoration process from its changelog can be minimized.
+See also the documentation section https://kafka.apache.org/24/documentation/streams/developer-guide/running-app#state-restoration-during-workload-rebalance[State Restoration During Workload Rebalance].
+
+== Conclusion
+
+This paper shares some of our best practices around the deployment of the Confluent Platform on Kubernetes.
+Of course, each use case and workload is slightly different, and the best architectures are tailored to the specific requirements of each organization.
+When designing an architecture, considerations such as workload characteristics, access patterns, and SLAs are very important but are too specific to cover in a general paper.
+To choose the right deployment strategy for specific cases, we recommend engaging with https://www.confluent.io/services/[Confluent Professional Services] for architecture and operational review.

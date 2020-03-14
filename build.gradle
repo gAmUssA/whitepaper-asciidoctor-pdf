@@ -1,0 +1,40 @@
+plugins {
+  id 'org.asciidoctor.jvm.convert' version '3.1.0'
+  id 'org.asciidoctor.jvm.pdf' version '3.1.0'
+}
+
+repositories {
+  jcenter()
+}
+
+asciidoctor {
+  outputDir "${buildDir}/docs"
+
+  attributes 'build-gradle': file('build.gradle'),
+             'endpoint-url': 'https://confluent.io',
+             'source-highlighter': 'coderay',
+             'icons': 'font',
+             'idprefix': '',
+             'idseparator': '-'
+}
+
+asciidoctorPdf {
+  outputDir "${buildDir}/docs"
+
+  theme 'custom'
+  fontsDir 'src/docs/asciidoc/theme/fonts'
+  
+}
+pdfThemes{
+  local 'custom', {
+    themeDir = 'src/docs/asciidoc/theme'
+  }
+}
+
+
+/*
+import org.asciidoctor.gradle.jvm.pdf.AsciidoctorPdfTask
+tasks.withType(AsciidoctorPdfTask) { adocTask ->
+  
+}
+*/
