@@ -1,5 +1,6 @@
 = Confluent Platform Reference Architecture for Kubernetes
 Viktor Gamov, © 2018-2020 Confluent, Inc.
+:doctype: book
 :linkattrs:
 :ast: &ast;
 :y: &#10003;
@@ -8,8 +9,7 @@ Viktor Gamov, © 2018-2020 Confluent, Inc.
 :n: icon:check-minus[role="red"]
 :c: icon:file-text-alt[role="blue"]
 :icons: font
-:source-highlighter: highlight.js
-:highlightjs-theme: idea
+:source-highlighter: coderay
 :toc-placement: macro
 :toc: auto
 
@@ -290,16 +290,17 @@ For high-throughput use cases, we do recommend installing Kafka brokers on separ
 Most of the Confluent Platform components are not mainly CPU bound.
 The few exceptions are:
 
-*Compression:* Kafka producers and consumers will compress and decompress data if you configure them to do so. We recommend using compression when you need to save bandwidth during transport or when storing on a filesystem.
+*Compression* :: Kafka producers and consumers will compress and decompress data if you configure them to do so. We recommend using compression when you need to save bandwidth during transport or when storing on a filesystem.
 
-*Encryption:* starting at version 0.9.0, Kafka clients can communicate with brokers using SSL.
+*Encryption* :: starting at version `0.9.0`, Kafka clients can communicate with brokers using SSL.
 There is a small performance overhead on both the client and the broker when using encryption, and a more substantial overhead when it is the consumer that connects over SSL. Since the broker needs to encrypt messages before sending them to the consumer, it can't use the regular zero-copy optimization and therefore uses significantly more CPU.
 
-*High rate of client requests:* if you have many clients, or if consumers are configured with `max.fetch.wait=0`, they can send very frequent requests and effectively saturate the broker.
+*High rate of client requests* :: if you have many clients, or if consumers are configured with `max.fetch.wait=0`, they can send very frequent requests and effectively saturate the broker.
 In those cases, configuring clients to batch requests improves performance.
 For a number of clients near 1,000, we recommend tuning brokers to fetch less frequently.
 However, CPU is unlikely to be your bottleneck.
-An 8-CPU deployment should be more than sufficient for excellent performance. You should start by simulating your workload with 2–4 CPUs and titrating up from there.
+An 8-CPU deployment should be more than sufficient for excellent performance. 
+You should start by simulating your workload with 2–4 CPUs and starting up from there.
 
 ==== Disk
 

@@ -3,10 +3,10 @@
 # title page style
 extends: default
 title-page:
-  background-image: image:header@2x.png[]
+  # background-image: image:header2x.png[]
   # background-color: E7F6FB
   logo:
-    # image: image:header@2x-white.png[pdfwidth=120%]
+    image: image:header2x.png[pdfwidth=120%]
     top: -14%
     align: center
   align: left
@@ -101,9 +101,7 @@ thematic-break:
   margin-bottom: 40
 ulist:
   marker:
-    font-family: Noto Serif
     font-size: 10
-    line-height: 1.1
     font-color: ff0000
     disc:
       content: "\u2022"
@@ -128,10 +126,12 @@ header:
   font-color: #bebebe
   font-size: 7
   line-height: 1
-  recto-content:
-    center: '{document-title}'
-  verso-content:
-    center: '{document-title}'
+  recto:
+    center:
+      content: '{document-title}'
+  verso:
+    center:
+      content: '{document-title}'
 table:
   background-color: #ffffff
   border-color: #bebebe
@@ -173,20 +173,25 @@ footer:
   font-color: #bebebe
   font-size: 7
   line-height: 1
-  recto-content:
-    left:   '© 2014-2020 Confluent, Inc. '
-    right:  '*{page-number}*'
-    center: 'Confluent Confidential Information. Prepared for {customer}'
-  verso-content:
-    left:   '© 2014-2020 Confluent, Inc. '
-    right:  '*{page-number}*'
-    center: 'Confluent Confidential Information. Prepared for {customer}'
+  recto-left-content: '© 2014-2020 Confluent, Inc. '
+  recto-right-content: '*{page-number}*'
+  recto-center-content: 'Confluent Confidential Information. Prepared for {customer}'
+  verso-left-content: '© 2014-2020 Confluent, Inc. '
+  verso-right-content: '*{page-number}*'
+  verso-center-content: 'Confluent Confidential Information. Prepared for {customer}'
 image:
   align: center
 caption:
   align: left
   font-size: $base-font-size * 0.95
   font-style: italic
+conum:
+  font-family: M+ 1mn
+  glyphs: circled
+sidebar:
+  padding: [12, 5, 25, 5]
+  background-color: #ffffee
+  border-color: #bbbbbb
 font:
   catalog:
     merge: true
