@@ -7,34 +7,60 @@ repositories {
   jcenter()
 }
 
-asciidoctor {
-  outputDir "${buildDir}/docs"
-
-  attributes 'build-gradle': file('build.gradle'),
-             'endpoint-url': 'https://confluent.io',
-             'source-highlighter': 'coderay',
-             'icons': 'font',
-             'idprefix': '',
-             'idseparator': '-'
-}
-
-asciidoctorPdf {
-  outputDir "${buildDir}/docs"
-
-  theme 'custom'
-  fontsDir 'src/docs/asciidoc/theme/fonts'
-  
-}
-pdfThemes{
-  local 'custom', {
-    themeDir = 'src/docs/asciidoc/theme'
+pdfThemes {
+  ['custom'].each { tName ->
+    local tName, {
+      themeDir = 'src/docs/asciidoc/theme'
+    }
   }
 }
 
-
-/*
-import org.asciidoctor.gradle.jvm.pdf.AsciidoctorPdfTask
-tasks.withType(AsciidoctorPdfTask) { adocTask ->
-  
+tasks.withType(AsciidoctorPdfTask).configureEach { adocPdfTask ->
+  adocPdfTask.outputDir "${buildDir}/docs"
+  adocPdfTask.attributes 'build-gradle': file('build.gradle'),
+                         'endpoint-url': 'https://confluent.io',
+                         'source-highlighter': 'coderay',
+                         'icons': 'font',
+                         'idprefix': '',
+                         'idseparator': '-'
+  adocPdfTask.fontsDir 'src/docs/asciidoc/theme/fonts'
+  adocPdfTask.theme 'custom'
 }
-*/
+
+// task for generating specified White Paper (PDF only)
+import org.asciidoctor.gradle.jvm.pdf.AsciidoctorPdfTask
+
+tasks.create("buildWhitepaper", AsciidoctorPdfTask) {
+  description "Generate specified White Paper"
+  group "Whitepapers"
+
+  def whitePaperName
+
+  doFirst {
+    if (project.hasProperty("h")) {
+      def h = """
+===================================================
+Task Args:
+whitepaper    Report to build. EX `whitepaper_filename`
+e.g.
+
+./gradlew buildWhitePaper -Pwhitepaper=Confluent_Platform_Reference_Architecture_for_Kubernetes
+===================================================
+"""
+      println h
+      throw new IllegalArgumentException("Help")
+    }
+    if (project.hasProperty("whitepaper")) {
+      sources {
+        whitePaperName = project.property("whitepaper")
+        include "whitepapers/" + whitePaperName + ".adoc"
+      }
+    } else {
+      throw new IllegalArgumentException("Missing a whitepaper name!")
+    }
+  }
+
+  doLast {
+    println "Finished paper (cmd+click): ${outputDir}/pdf/whitepapers/${whitePaperName}.pdf"
+  }
+}

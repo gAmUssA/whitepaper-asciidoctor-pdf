@@ -83,7 +83,7 @@ heading:
 code:
   background-color: #FAFAFA
   border-color: #F2F2F2
-  font-family: JB Mono
+  font-family: Source Code
   font-size: 10
   line-height: 1.1
   padding: 24
@@ -91,18 +91,18 @@ literal:
   background-color: #f9f2f4
   border-color: #F2F2F2
   font-color: #c7254e
-  font-family: JB Mono
+  font-family: Source Code
   font-size: 10
 thematic-break:
   border-color: #bebebe
-  border-style: solid
+  border-style: dashed
   border-width: 0.5
   margin-top: 25
   margin-bottom: 40
 ulist:
   marker:
     font-size: 10
-    font-color: ff0000
+    font-color: 000000
     disc:
       content: "\u2022"
 description-list:
@@ -169,7 +169,8 @@ toc:
     font-size: 9
     font-style: normal
 footer:
-  height: 1.5in
+  border-color: #ffffff
+  height: 1.1in
   font-color: #bebebe
   font-size: 7
   line-height: 1
@@ -186,15 +187,13 @@ caption:
   font-size: $base-font-size * 0.95
   font-style: italic
 conum:
-  font-family: M+ 1mn
   glyphs: circled
-sidebar:
-  padding: [12, 5, 25, 5]
-  background-color: #ffffee
-  border-color: #bbbbbb
+#sidebar:
+#  padding: [12, 5, 25, 5]
+#  background-color: #ffffee
+#  border-color: #bbbbbb
 font:
   catalog:
-    merge: true
     MarkOT:
       normal: MarkOT-Light.ttf
       italic: MarkOT-Italic.ttf
@@ -202,21 +201,20 @@ font:
       bold-italic: MarkOT-BoldItalic.ttf
       light: MarkOT-Light.ttf
       medium: MarkOT-Medium.ttf
-    JB Mono:
-      normal: JetBrainsMono-Regular.ttf
-      italic: JetBrainsMono-Italic.ttf
-      bold: JetBrainsMono-Bold.ttf
-      bold-italic: JetBrainsMono-Bold-Italic.ttf
-      Medium: JetBrainsMono-Medium.ttf
+    Source Code:
+      normal: SourceCodePro-Regular.ttf
+      italic: SourceCodePro-It.ttf
+      bold:   SourceCodePro-Bold.ttf
+      bold_italic: SourceCodePro-BoldIt.ttf
+      medium: SourceCodePro-Medium.ttf
     Noto Serif:
       normal: GEM_FONTS_DIR/notoserif-regular-subset.ttf
       bold: GEM_FONTS_DIR/notoserif-bold-subset.ttf
       italic: GEM_FONTS_DIR/notoserif-italic-subset.ttf
       bold_italic: GEM_FONTS_DIR/notoserif-bold_italic-subset.ttf
-    # M+ 1mn supports ASCII and the circled numbers used for conums
     M+ 1mn:
       normal: GEM_FONTS_DIR/mplus1mn-regular-subset.ttf
       bold: GEM_FONTS_DIR/mplus1mn-bold-subset.ttf
       italic: GEM_FONTS_DIR/mplus1mn-italic-subset.ttf
       bold_italic: GEM_FONTS_DIR/mplus1mn-bold_italic-subset.ttf
-  fallbacks:
+  fallbacks: [M+ 1mn]
