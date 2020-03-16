@@ -1,3 +1,5 @@
+import org.asciidoctor.gradle.jvm.pdf.AsciidoctorPdfTask
+
 plugins {
   id 'org.asciidoctor.jvm.convert' version '3.1.0'
   id 'org.asciidoctor.jvm.pdf' version '3.1.0'
@@ -27,36 +29,28 @@ tasks.withType(AsciidoctorPdfTask) {
   theme 'custom'
 }
 
-// task for generating specified White Paper (PDF only)
-import org.asciidoctor.gradle.jvm.pdf.AsciidoctorPdfTask
-
-tasks.create("buildWhitepaper", AsciidoctorPdfTask) {
+tasks.create("buildWhitepaper", AsciidoctorPdfTask) { myTask ->
   description "Generate specified White Paper"
   group "Whitepapers"
 
   def whitePaperName
-
   doFirst {
-    if (project.hasProperty("h")) {
-      def h = """
+    def h = """
 ===================================================
 Task Args:
-whitepaper    Report to build. EX `whitepaper_filename`
+whitepaper    White Paper to build. EX `whitepaper_filename`
 e.g.
 
 ./gradlew buildWhitePaper -Pwhitepaper=Confluent_Platform_Reference_Architecture_for_Kubernetes
 ===================================================
 """
-      println h
-      throw new IllegalArgumentException("Help")
-    }
+
     if (project.hasProperty("whitepaper")) {
-      sources {
-        whitePaperName = project.property("whitepaper")
-        include "whitepapers/" + whitePaperName + ".adoc"
+      myTask.sources {
+        include "whitepapers/${project.property("whitepaper")}.adoc"
       }
     } else {
-      throw new IllegalArgumentException("Missing a whitepaper name!")
+      throw new IllegalArgumentException("Missing a whitepaper name!\n$h")
     }
   }
 
