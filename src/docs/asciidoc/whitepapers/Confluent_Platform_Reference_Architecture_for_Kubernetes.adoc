@@ -119,14 +119,14 @@ Helm Charts come with sane defaults that you can safely apply to get the best Ka
 │   └── grafana-dashboard.json
 ├── helm
 │   ├── README.rst
-│   ├── confluent-operator  # <1>
+│   ├── confluent-operator          # <1>
 │   │   ├── Chart.yaml
 │   │   ├── LICENSE
 │   │   ├── charts
 │   │   ├── requirements.yaml
 │   │   ├── templates
 │   │   └── values.yaml
-│   ├── providers       # <2>
+│   ├── providers                   # <2>
 │   │   ├── README.rst
 │   │   ├── aws.yaml
 │   │   ├── azure.yaml
@@ -151,7 +151,6 @@ To customize your deployment, we recommend copying one of the provided files and
 You can find an example of such an approach in this https://gist.github.com/confluentgist/92de81ff38c48769e40c118a9de9213c[deployment of `private.yaml` for Pivotal Container Service (PKS) on the Google Kubernetes Engine (GKE)].
 
 In subsequent sections, we will use snippets of configurations for particular CRDs.
-
 ****
 
 === Storage
@@ -299,7 +298,7 @@ There is a small performance overhead on both the client and the broker when usi
 In those cases, configuring clients to batch requests improves performance.
 For a number of clients near 1,000, we recommend tuning brokers to fetch less frequently.
 However, CPU is unlikely to be your bottleneck.
-An 8-CPU deployment should be more than sufficient for excellent performance. 
+An 8-CPU deployment should be more than sufficient for excellent performance.
 You should start by simulating your workload with 2–4 CPUs and starting up from there.
 
 ==== Disk
@@ -342,13 +341,20 @@ NOTE: A simple ping to the listener port may not be enough to ensure the Kafka b
 
 Kafka's application logs written to standard, so they are captured by the default logging infrastructure (according to best practice for containerized applications).
 
-===== Manifests
+===== An Example Deployment
 
-A Kafka Kubernetes deployment consists of:
+You can find example deployment of Confluent Platform on Kubernetes using Operator in https://github.com/confluentinc/examples/tree/5.4.1-post/kubernetes[the curated repository of examples on GitHub]
 
-* https://github.com/confluentinc/cp-helm-charts/blob/master/charts/cp-kafka/templates/statefulset.yaml[Kafka StatefulSet]
-* https://github.com/confluentinc/cp-helm-charts/blob/master/charts/cp-kafka/templates/service.yaml[Kafka Service]
-* https://github.com/confluentinc/cp-helm-charts/blob/master/charts/cp-kafka/templates/headless-service.yaml[Kafka Headless Service]
+The major components of this demo are:
+
+* A Kubernetes cluster running on GKE.
+* Confluent Operator which is used to manage the following Confluent Platform components.
+* A single node ZooKeeper.
+* A single node Kafka.
+* A single node Schema Registry.
+* Confluent Control Center.
+* A single node Kafka Connect.
+* One instance of `kafka-connect-datagen` connector to produce mock data.
 
 === Kafka Streams API
 
